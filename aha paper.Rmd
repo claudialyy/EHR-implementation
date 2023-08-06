@@ -1,0 +1,489 @@
+---
+title: "aha paper"
+author: "Claudia"
+date: '2023-02-09'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Predicting the impact of EHR implementation
+This study explores the relationships between EHR implementation and health outcomes, including number of readmissions, total performance score, overall hospital rating, patient knowledge, quality of care, and care coordination. 
+
+```{r}
+#set working directory
+getwd()
+setwd("C:/Users/claud/OneDrive/Desktop/RA")
+```
+
+```{r}
+#Import datasets
+aha <- read.csv('./data/ehr_aha_cms_provider_id_cleaned_lean.csv',header = TRUE, sep = ",")
+readmissions<- read.csv('./data/READMISSION REDUCTION_ehr.csv',header = TRUE, sep = ",")
+tps<- read.csv('./data/hvbp_tps_10_28_2015_ehr.csv',header = TRUE, sep = ",")
+rating<- read.csv('./data/HCAHPS - Hospital_ehr.csv',header = TRUE, sep = ",")
+knowledge<- read.csv('./data/hvbp_imm2_11_10_2016.csv',na.string="Not Available",header = TRUE, sep = ",")
+qoc<-read.csv('./data/hvbp_hcahps_11_10_2016.csv',na.string="Not Available",header = TRUE, sep = ",")
+coordination<-read.csv('./data/HOSPITAL_QUARTERLY_QUALITYMEASURE_IPFQR_HOSPITAL.csv',na.string="Not Available",header = TRUE, sep = ",")
+```
+
+```{r}
+View(aha)
+colnames(aha)
+```
+```{r}
+head(aha)
+```
+
+```{r}
+str(aha)
+```
+
+```{r}
+View(readmissions)
+colnames(readmissions)
+```
+```{r}
+head(readmissions)
+```
+
+```{r}
+str(readmissions)
+```
+
+```{r}
+nrow(readmissions)
+ncol(readmissions)
+```
+
+
+```{r}
+nrow(aha)
+ncol(aha)
+```
+
+```{r}
+nrow(tps)
+ncol(tps)
+```
+
+```{r}
+head(tps)
+```
+
+```{r}
+str(tps)
+```
+
+```{r}
+nrow(rating)
+ncol(rating)
+```
+
+```{r}
+str(rating)
+```
+
+```{r}
+nrow(knowledge)
+ncol(knowledge)
+```
+```{r}
+str(knowledge)
+```
+
+
+```{r}
+str(coordination)
+```
+```{r}
+nrow(coordination)
+ncol(coordination)
+```
+
+```{r}
+str(qoc)
+```
+```{r}
+nrow(qoc)
+ncol(qoc)
+```
+
+```{r}
+#check for NA's in aha dataset
+colSums(is.na(aha))
+```
+
+```{r}
+#check for NA's in readmissions dataset
+colSums(is.na(readmissions))
+```
+```{r}
+#check for NA's in tps dataset
+colSums(is.na(tps))
+```
+```{r}
+#check for NA's in ratings dataset
+colSums(is.na(rating))
+```
+```{r}
+#check for NA's in knowledge dataset
+colSums(is.na(knowledge))
+```
+
+
+```{r}
+#check for NA's in qoc dataset
+colSums(is.na(qoc))
+```
+```{r}
+#check for NA's in coordination dataset
+colSums(is.na(coordination))
+```
+##Cleaning data
+```{r}
+#subset datasets with useful columns
+knowledge<- knowledge[, c(1,8:15)]
+coordination<- coordination[, c(1,109,130)]
+qoc<- qoc[, c(1,28,36,44,60)]
+```
+
+
+```{r}
+nrow(knowledge)
+ncol(knowledge)
+```
+
+
+```{r}
+nrow(coordination)
+ncol(coordination)
+```
+
+```{r}
+nrow(qoc)
+ncol(qoc)
+```
+```{r}
+head(knowledge)
+```
+
+```{r}
+head(coordination)
+```
+
+```{r}
+head(qoc)
+```
+
+```{r}
+#renaming column names
+colnames(knowledge)[colnames(knowledge) == "Provider_Number"] <- "Provider_ID"
+colnames(qoc)[colnames(qoc) == "Provider.Number"] <- "Provider_ID"
+colnames(coordination)[colnames(coordination) == "Provider_Number"] <- "Provider_ID"
+```
+
+
+##Merging datasets
+```{r}
+#merge datasets using Provider_ID
+d1 <- rating
+d2 <- readmissions
+m1 <- merge(d1, d2 ,by="Provider_ID")
+View(m1)
+d3 <- tps
+m2 <- merge(m1, d3, by="Provider_ID")
+View(m2)
+d4 <- aha
+m3 <- merge(m2, d4,by="Provider_ID" )
+View(m3)
+d5<-knowledge
+m4<-merge(d5, m3, by="Provider_ID")
+View(m4)
+d6<-qoc
+m5<-merge(d6, m4 ,by="Provider_ID")
+View(m5)
+d7<-coordination
+total<-merge(d7, m5, by="Provider_ID")
+View(total)
+```
+
+##Final dataset
+```{r}
+colnames(total)
+```
+
+```{r}
+total
+```
+
+
+```{r}
+nrow(total)
+ncol(total)
+```
+```{r}
+str(total)
+```
+
+```{r}
+#change int variables to numeric
+total[sapply(total, is.integer)] <- lapply(total[sapply(total, is.integer)],as.numeric)
+```
+
+```{r}
+str(total)
+```
+```{r}
+#change chr variables to factor
+total[sapply(total, is.character)] <- lapply(total[sapply(total, is.character)],as.factor)
+```
+
+```{r}
+str(total)
+```
+
+```{r}
+colSums(is.na(total))
+```
+
+```{r}
+nrow(total)
+ncol(total)
+```
+
+```{r}
+#subset of dataset with no NA's
+total_sub<-total[!is.na(total$HBIPS.7_65_Over_._of_Total)&!is.na(total$HBIPS.6_65_Over_._of_Total) &!is.na (total$NETWRK),]
+```
+
+```{r}
+table(total_sub$NETWRK)
+```
+
+```{r}
+table(total_sub$HBIPS.6_65_Over_._of_Total)
+```
+
+```{r}
+table(total_sub$HBIPS.7_65_Over_._of_Total)
+```
+
+```{r}
+sum(is.na(total_sub))
+```
+
+```{r}
+nrow(total_sub)
+ncol(total_sub)
+```
+
+
+##Linear regression
+```{r}
+#readmission
+lm_readmission_1<- lm(readdm_total ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total_sub) 
+```
+
+```{r}
+summary(lm_readmission_1)
+```
+
+```{r}
+lm_readmission_2<- lm(readdm_total ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total) 
+```
+
+```{r}
+summary(lm_readmission_2)
+```
+```{r}
+lm_readmission_3<- lm(readdm_total ~ HOSPBD , data = total_sub)
+```
+
+```{r}
+summary(lm_readmission_3)
+```
+
+```{r}
+#ehr and size on readmission
+lm_readmission_4<- lm(readdm_total ~ EHLTH * HOSPBD, data = total) 
+```
+
+```{r}
+summary(lm_readmission_4)
+```
+```{r}
+lm_readmission_5<- lm(readdm_total ~ EHLTH * HOSPBD, data = total_sub)
+```
+
+```{r}
+summary(lm_readmission_5)
+```
+
+```{r}
+#total performance score(TPS)
+lm_tps_1 <- lm(TPS ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total_sub)
+```
+
+```{r}
+summary(lm_tps_1)
+```
+
+```{r}
+lm_tps_2<- lm(TPS ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total)
+```
+
+```{r}
+summary(lm_tps_2)
+```
+```{r}
+lm_tps_3 <- lm(TPS ~ location_metro , data = total_sub) 
+```
+
+```{r}
+summary(lm_tps_3)
+```
+```{r}
+#ehr and location metro on TPS
+lm_tps_4<- lm(TPS ~ EHLTH * location_metro  , data = total)
+```
+
+```{r}
+summary(lm_tps_4)
+```
+```{r}
+lm_tps_5<- lm(TPS ~ EHLTH * location_metro  , data = total_sub)
+```
+
+```{r}
+summary(lm_tps_5)
+```
+
+```{r}
+#overall hospital rating
+lm_rating_1 <- lm(HCAHPS_Linear_Mean_Value ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total_sub) 
+```
+
+```{r}
+summary(lm_rating_1)
+```
+
+```{r}
+lm_rating_2 <- lm(HCAHPS_Linear_Mean_Value ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total)
+```
+
+```{r}
+summary(lm_rating_2)
+```
+```{r}
+lm_rating_3 <- lm(HCAHPS_Linear_Mean_Value ~location_rural  , data = total_sub) 
+```
+
+```{r}
+summary(lm_rating_3)
+```
+
+```{r}
+#knowledge
+lm_knowledge_1<-lm(IMM.2.Performance.Rate ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total_sub) 
+
+```
+
+```{r}
+summary(lm_knowledge_1)
+```
+
+```{r}
+lm_knowledge_2<-lm(IMM.2.Performance.Rate ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total)
+```
+
+```{r}
+summary(lm_knowledge_2)
+```
+```{r}
+lm_knowledge_3<-lm(IMM.2.Performance.Rate ~ HOSPBD + location_rural, data = total)
+```
+
+```{r}
+summary(lm_knowledge_3)
+```
+
+```{r}
+#quality of care
+lm_qoc_1<-lm(Communication.about.Medicines.Performance.Rate ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total_sub)
+```
+
+```{r}
+summary(lm_qoc_1)
+```
+
+```{r}
+lm_qoc_2<-lm(Communication.about.Medicines.Performance.Rate ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total)
+```
+
+```{r}
+summary(lm_qoc_2)
+```
+```{r}
+lm_qoc_3<-lm(Communication.about.Medicines.Performance.Rate ~ location_rural , data = total)
+```
+
+```{r}
+summary(lm_qoc_3)
+```
+
+```{r}
+#care coordination
+lm_coordination_1<-lm(HBIPS.7_65_Over_._of_Total ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total_sub)
+```
+
+```{r}
+summary(lm_coordination_1)
+```
+
+```{r}
+lm_coordination_2<-lm(HBIPS.7_65_Over_._of_Total ~ EHLTH + HOSPBD + location_metro + location_rural + control_nongov_nfp + control_investerowned_fp , data = total)
+```
+
+```{r}
+summary(lm_coordination_2)
+```
+##Multicolinearity
+```{r}
+#multicolinearity 
+#install.packages('car')
+library(car)
+vif(lm_coordination_1)
+vif(lm_coordination_2)
+```
+```{r}
+vif(lm_knowledge_1)
+vif(lm_knowledge_2)
+vif(lm_knowledge_3)
+```
+
+```{r}
+vif(lm_qoc_1)
+vif(lm_qoc_2)
+```
+
+```{r}
+vif(lm_rating_1)
+vif(lm_rating_2)
+```
+
+```{r}
+vif(lm_readmission_1)
+vif(lm_readmission_2)
+```
+
+```{r}
+vif(lm_tps_1)
+vif(lm_tps_2)
+```
+
+
+##Conclusion
+I excluded columns in the datasets that were not useful and merged AHA's 2015-2016 dataset with data from CMS using "Provider_ID". After merging, I was left was 192 rows and 34 columns. I created a subset of the final dataset that had no missing values, which had 118 rows and 34 columns. The linear regression models showed counterintuitive results for readmission and TPS. 
